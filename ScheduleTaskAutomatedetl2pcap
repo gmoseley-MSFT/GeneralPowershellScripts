@@ -1,0 +1,25 @@
+###Will download the Automatedetl2pcpa script and create a scheduled task to run every 5 minutes perpetually###
+###Needs to be ran as admin###
+# Define the URL of the script to download
+$scriptUrl = "https://raw.githubusercontent.com/gmoseley-MSFT/GeneralPowershellScripts/6cfd44e7a5aec528b0c4106086262cfc05fa5927/Automatedetl2pcap"
+
+# Define the local path to save the script, replacing 'currentuser' with the actual current user name
+$localScriptPath = "C:\Users\$env:USERNAME\Automatedetl2pcap"
+$localScriptFilePath = Join-Path -Path $localScriptPath -ChildPath "Automatedetl2pcap.ps1"
+
+# Create the directory if it doesn't exist
+if (-not (Test-Path -Path $localScriptPath)) {
+    New-Item -Path $localScriptPath -ItemType Directory
+}
+
+# Download the script
+Invoke-WebRequest -Uri $scriptUrl -OutFile $localScriptFilePath
+
+# Task variables
+$taskName = "AutomatedEtl2PcapngConversion"
+$taskDescription = "Runs the Automatedetl2pcap script every 5 minutes"
+$action = New-ScheduledTaskAction -Execute "PowerShell.exe" -Argument "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$localScriptFilePath`""
+$trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 5) -RepetitionDuration (New-TimeSpan -Days 9999)
+
+# Register the scheduled task
+Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Description $taskDescription -User $env:USERNAME -RunLevel Highest -Force
