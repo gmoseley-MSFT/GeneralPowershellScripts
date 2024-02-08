@@ -1,0 +1,30 @@
+# Add Windows Shell functionality to access the Recycle Bin
+Add-Type -AssemblyName Microsoft.VisualBasic
+Add-Type -AssemblyName System.Windows.Forms
+
+# Correctly define the Downloads directory path
+$downloadsPath = [System.Environment]::GetFolderPath('MyDocuments') -replace 'Documents', 'Downloads'
+$etl2pcapngPath = Join-Path -Path $downloadsPath -ChildPath "etl2pcapng.exe"
+
+# Check if etl2pcapng.exe exists, if not, download it
+if (-not (Test-Path -Path $etl2pcapngPath)) {
+    $url = "https://github.com/microsoft/etl2pcapng/releases/download/v1.11.0/etl2pcapng.exe"
+    Invoke-WebRequest -Uri $url -OutFile $etl2pcapngPath
+}
+
+# Get all .etl files in the Downloads directory
+$etlFiles = Get-ChildItem -Path $downloadsPath -Filter *.etl
+
+# Loop through each .etl file, convert it to .pcap, and then move the .etl file to the Recycle Bin
+foreach ($file in $etlFiles) {
+    $pcapFilePath = $file.FullName -replace '\.etl$', '.pcap'
+    & $etl2pcapngPath $file.FullName $pcapFilePath
+    if (Test-Path -Path $pcapFilePath) {
+        # Move the .etl file to the Recycle Bin
+        [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile($file.FullName, 'OnlyErrorDialogs', 'SendToRecycleBin')
+        
+        # Print the names of the .etl moved to the Recycle Bin and the .pcap created
+        Write-Host "Moved to Recycle Bin: $($file.Name)"
+        Write-Host "Created: $(Split-Path -Leaf $pcapFilePath)"
+    }
+}
